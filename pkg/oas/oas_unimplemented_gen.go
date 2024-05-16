@@ -578,6 +578,15 @@ func (UnimplementedHandler) GetNftItemsByAddresses(ctx context.Context, req OptG
 	return r, ht.ErrNotImplemented
 }
 
+// GetOutMsgQueueSizes implements getOutMsgQueueSizes operation.
+//
+// Get out msg queue sizes.
+//
+// GET /v2/liteserver/get_out_msg_queue_sizes
+func (UnimplementedHandler) GetOutMsgQueueSizes(ctx context.Context) (r *GetOutMsgQueueSizesOK, _ error) {
+	return r, ht.ErrNotImplemented
+}
+
 // GetRates implements getRates operation.
 //
 // Get the token price to the currency.
@@ -794,15 +803,6 @@ func (UnimplementedHandler) GetWalletsByPublicKey(ctx context.Context, params Ge
 	return r, ht.ErrNotImplemented
 }
 
-// ReduceIndexingLatency implements reduceIndexingLatency operation.
-//
-// Reduce indexing latency.
-//
-// GET /v2/status
-func (UnimplementedHandler) ReduceIndexingLatency(ctx context.Context) (r *ServiceStatus, _ error) {
-	return r, ht.ErrNotImplemented
-}
-
 // ReindexAccount implements reindexAccount operation.
 //
 // Update internal cache for a particular account.
@@ -846,6 +846,15 @@ func (UnimplementedHandler) SendRawMessage(ctx context.Context, req *SendRawMess
 // PUT /v2/wallet/backup
 func (UnimplementedHandler) SetWalletBackup(ctx context.Context, req SetWalletBackupReq, params SetWalletBackupParams) error {
 	return ht.ErrNotImplemented
+}
+
+// Status implements status operation.
+//
+// Status.
+//
+// GET /v2/status
+func (UnimplementedHandler) Status(ctx context.Context) (r *ServiceStatus, _ error) {
+	return r, ht.ErrNotImplemented
 }
 
 // TonConnectProof implements tonConnectProof operation.

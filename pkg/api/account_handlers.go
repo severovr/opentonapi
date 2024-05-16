@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/cespare/xxhash/v2"
+	"github.com/tonkeeper/opentonapi/pkg/references"
 	"github.com/tonkeeper/tongo"
 	"github.com/tonkeeper/tongo/abi"
 	"github.com/tonkeeper/tongo/boc"
@@ -93,7 +94,7 @@ func (h *Handler) GetAccounts(ctx context.Context, request oas.OptGetAccountsReq
 	if err != nil {
 		return nil, toError(http.StatusInternalServerError, err)
 	}
-	results := make([]oas.Account, 0, len(accounts))
+	results := make(map[ton.AccountID]oas.Account, len(accounts))
 	for _, account := range accounts {
 		delete(allAccountIDs, account.AccountAddress)
 		ab, found := h.addressBook.GetAddressInfoByAddress(account.AccountAddress)
@@ -103,17 +104,22 @@ func (h *Handler) GetAccounts(ctx context.Context, request oas.OptGetAccountsReq
 		} else {
 			res = convertToAccount(account, nil, h.state)
 		}
-		results = append(results, res)
+		results[account.AccountAddress] = res
 	}
 	// if we don't find an account, we return it with "nonexist" status
 	for accountID := range allAccountIDs {
 		account := oas.Account{
-			Address: accountID.ToRaw(),
-			Status:  oas.AccountStatusNonexist,
+			Address:  accountID.ToRaw(),
+			Status:   oas.AccountStatusNonexist,
+			IsWallet: true,
 		}
-		results = append(results, account)
+		results[accountID] = account
 	}
-	return &oas.Accounts{Accounts: results}, nil
+	resp := &oas.Accounts{}
+	for _, i := range ids {
+		resp.Accounts = append(resp.Accounts, results[i])
+	}
+	return resp, nil
 }
 
 func (h *Handler) GetBlockchainAccountTransactions(ctx context.Context, params oas.GetBlockchainAccountTransactionsParams) (*oas.Transactions, error) {
@@ -124,7 +130,12 @@ func (h *Handler) GetBlockchainAccountTransactions(ctx context.Context, params o
 	if params.BeforeLt.Value == 0 {
 		params.BeforeLt.Value = 1 << 62
 	}
-	txs, err := h.storage.GetAccountTransactions(ctx, account.ID, int(params.Limit.Value), uint64(params.BeforeLt.Value), uint64(params.AfterLt.Value))
+	descendingOrder := true
+	if params.SortOrder.Value == oas.GetBlockchainAccountTransactionsSortOrderAsc {
+		descendingOrder = false
+	}
+	txs, err := h.storage.GetAccountTransactions(ctx, account.ID, int(params.Limit.Value),
+		uint64(params.BeforeLt.Value), uint64(params.AfterLt.Value), descendingOrder)
 	if errors.Is(err, core.ErrEntityNotFound) {
 		return &oas.Transactions{}, nil
 	}
@@ -134,8 +145,12 @@ func (h *Handler) GetBlockchainAccountTransactions(ctx context.Context, params o
 	result := oas.Transactions{
 		Transactions: make([]oas.Transaction, len(txs)),
 	}
+	accountObject, err := h.storage.GetRawAccount(ctx, account.ID)
+	if err != nil {
+		return nil, err
+	}
 	for i, tx := range txs {
-		result.Transactions[i] = convertTransaction(*tx, h.addressBook)
+		result.Transactions[i] = convertTransaction(*tx, accountObject.Interfaces, h.addressBook)
 	}
 	return &result, nil
 }
@@ -248,6 +263,10 @@ func (h *Handler) SearchAccounts(ctx context.Context, params oas.SearchAccountsP
 			Preview: account.Preview,
 		})
 	}
+
+	sort.Slice(response.Addresses, func(i, j int) bool {
+		return response.Addresses[i].Address == references.USDT.ToRaw()
+	})
 
 	return &response, nil
 }
@@ -377,7 +396,7 @@ func (h *Handler) GetAccountTraces(ctx context.Context, params oas.GetAccountTra
 	if err != nil {
 		return nil, toError(http.StatusBadRequest, err)
 	}
-	traceIDs, err := h.storage.SearchTraces(ctx, account.ID, params.Limit.Value, nil, nil, nil, false)
+	traceIDs, err := h.storage.SearchTraces(ctx, account.ID, params.Limit.Value, optIntToPointer(params.BeforeLt), nil, nil, false)
 	if err != nil && !errors.Is(err, core.ErrEntityNotFound) {
 		return nil, toError(http.StatusInternalServerError, err)
 	}

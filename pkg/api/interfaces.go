@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ed25519"
 
+	"github.com/tonkeeper/opentonapi/pkg/oas"
 	rules "github.com/tonkeeper/scam_backoffice_rules"
 	"github.com/tonkeeper/tongo"
 	"github.com/tonkeeper/tongo/abi"
@@ -37,11 +38,11 @@ type storage interface {
 	SearchTransactionByMessageHash(ctx context.Context, hash tongo.Bits256) (*tongo.Bits256, error)
 	// GetBlockTransactions returns low-level information about transactions in a particular block.
 	GetBlockTransactions(ctx context.Context, id tongo.BlockID) ([]*core.Transaction, error)
-	GetAccountTransactions(ctx context.Context, id tongo.AccountID, limit int, beforeLt, afterLt uint64) ([]*core.Transaction, error)
+	GetAccountTransactions(ctx context.Context, id tongo.AccountID, limit int, beforeLt, afterLt uint64, descendingOrder bool) ([]*core.Transaction, error)
 	GetDnsExpiring(ctx context.Context, id tongo.AccountID, period *int) ([]core.DnsExpiring, error)
 	GetLogs(ctx context.Context, account tongo.AccountID, destination *tlb.MsgAddress, limit int, beforeLT uint64) ([]core.Message, error)
 	GetAccountDiff(ctx context.Context, account tongo.AccountID, startTime int64, endTime int64) (int64, error)
-	ReduceIndexingLatency(ctx context.Context) (int64, error)
+	GetLatency(ctx context.Context) (int64, error)
 	GetTrace(ctx context.Context, hash tongo.Bits256) (*core.Trace, error)
 	SearchTraces(ctx context.Context, a tongo.AccountID, limit int, beforeLT, startTime, endTime *int64, initiator bool) ([]core.TraceID, error)
 
@@ -100,6 +101,8 @@ type storage interface {
 	GetInscriptionBalancesByAccount(ctx context.Context, a ton.AccountID) ([]core.InscriptionBalance, error)
 	GetInscriptionsHistoryByAccount(ctx context.Context, a ton.AccountID, ticker *string, beforeLt int64, limit int) ([]core.InscriptionMessage, error)
 
+	GetMissedEvents(ctx context.Context, account ton.AccountID, lt uint64, limit int) ([]oas.AccountEvent, error)
+
 	liteStorageRaw
 }
 
@@ -119,6 +122,7 @@ type liteStorageRaw interface {
 	GetBlockProofRaw(ctx context.Context, knownBlock tongo.BlockIDExt, targetBlock *tongo.BlockIDExt) (liteclient.LiteServerPartialBlockProofC, error)
 	GetConfigAllRaw(ctx context.Context, mode uint32, id tongo.BlockIDExt) (liteclient.LiteServerConfigInfoC, error)
 	GetShardBlockProofRaw(ctx context.Context, id tongo.BlockIDExt) (liteclient.LiteServerShardBlockProofC, error)
+	GetOutMsgQueueSizes(ctx context.Context) (liteclient.LiteServerOutMsgQueueSizesC, error)
 }
 
 // chainState provides current blockchain state which change very rarely or slow like staking APY income

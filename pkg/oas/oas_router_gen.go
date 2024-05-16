@@ -1926,6 +1926,27 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						}
 
 						elem = origElem
+					case 'o': // Prefix: "out_msg_queue_sizes"
+						origElem := elem
+						if l := len("out_msg_queue_sizes"); len(elem) >= l && elem[0:l] == "out_msg_queue_sizes" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							// Leaf node.
+							switch r.Method {
+							case "GET":
+								s.handleGetOutMsgQueueSizesRequest([0]string{}, elemIsEscaped, w, r)
+							default:
+								s.notAllowed(w, r, "GET")
+							}
+
+							return
+						}
+
+						elem = origElem
 					case 's': // Prefix: "s"
 						origElem := elem
 						if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
@@ -2656,7 +2677,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 							// Leaf node.
 							switch r.Method {
 							case "GET":
-								s.handleReduceIndexingLatencyRequest([0]string{}, elemIsEscaped, w, r)
+								s.handleStatusRequest([0]string{}, elemIsEscaped, w, r)
 							default:
 								s.notAllowed(w, r, "GET")
 							}
@@ -5037,6 +5058,31 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						}
 
 						elem = origElem
+					case 'o': // Prefix: "out_msg_queue_sizes"
+						origElem := elem
+						if l := len("out_msg_queue_sizes"); len(elem) >= l && elem[0:l] == "out_msg_queue_sizes" {
+							elem = elem[l:]
+						} else {
+							break
+						}
+
+						if len(elem) == 0 {
+							switch method {
+							case "GET":
+								// Leaf: GetOutMsgQueueSizes
+								r.name = "GetOutMsgQueueSizes"
+								r.summary = ""
+								r.operationID = "getOutMsgQueueSizes"
+								r.pathPattern = "/v2/liteserver/get_out_msg_queue_sizes"
+								r.args = args
+								r.count = 0
+								return r, true
+							default:
+								return
+							}
+						}
+
+						elem = origElem
 					case 's': // Prefix: "s"
 						origElem := elem
 						if l := len("s"); len(elem) >= l && elem[0:l] == "s" {
@@ -5828,10 +5874,10 @@ func (s *Server) FindPath(method string, u *url.URL) (r Route, _ bool) {
 						if len(elem) == 0 {
 							switch method {
 							case "GET":
-								// Leaf: ReduceIndexingLatency
-								r.name = "ReduceIndexingLatency"
+								// Leaf: Status
+								r.name = "Status"
 								r.summary = ""
-								r.operationID = "reduceIndexingLatency"
+								r.operationID = "status"
 								r.pathPattern = "/v2/status"
 								r.args = args
 								r.count = 0

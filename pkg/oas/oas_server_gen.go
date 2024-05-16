@@ -390,6 +390,12 @@ type Handler interface {
 	//
 	// POST /v2/nfts/_bulk
 	GetNftItemsByAddresses(ctx context.Context, req OptGetNftItemsByAddressesReq) (*NftItems, error)
+	// GetOutMsgQueueSizes implements getOutMsgQueueSizes operation.
+	//
+	// Get out msg queue sizes.
+	//
+	// GET /v2/liteserver/get_out_msg_queue_sizes
+	GetOutMsgQueueSizes(ctx context.Context) (*GetOutMsgQueueSizesOK, error)
 	// GetRates implements getRates operation.
 	//
 	// Get the token price to the currency.
@@ -534,12 +540,6 @@ type Handler interface {
 	//
 	// GET /v2/pubkeys/{public_key}/wallets
 	GetWalletsByPublicKey(ctx context.Context, params GetWalletsByPublicKeyParams) (*Accounts, error)
-	// ReduceIndexingLatency implements reduceIndexingLatency operation.
-	//
-	// Reduce indexing latency.
-	//
-	// GET /v2/status
-	ReduceIndexingLatency(ctx context.Context) (*ServiceStatus, error)
 	// ReindexAccount implements reindexAccount operation.
 	//
 	// Update internal cache for a particular account.
@@ -570,6 +570,12 @@ type Handler interface {
 	//
 	// PUT /v2/wallet/backup
 	SetWalletBackup(ctx context.Context, req SetWalletBackupReq, params SetWalletBackupParams) error
+	// Status implements status operation.
+	//
+	// Status.
+	//
+	// GET /v2/status
+	Status(ctx context.Context) (*ServiceStatus, error)
 	// TonConnectProof implements tonConnectProof operation.
 	//
 	// Account verification and token issuance.

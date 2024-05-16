@@ -643,6 +643,7 @@ type Action struct {
 	InscriptionTransfer   OptInscriptionTransferAction   `json:"InscriptionTransfer"`
 	InscriptionMint       OptInscriptionMintAction       `json:"InscriptionMint"`
 	SimplePreview         ActionSimplePreview            `json:"simple_preview"`
+	BaseTransactions      []string                       `json:"base_transactions"`
 }
 
 // GetType returns the value of Type.
@@ -760,6 +761,11 @@ func (s *Action) GetSimplePreview() ActionSimplePreview {
 	return s.SimplePreview
 }
 
+// GetBaseTransactions returns the value of BaseTransactions.
+func (s *Action) GetBaseTransactions() []string {
+	return s.BaseTransactions
+}
+
 // SetType sets the value of Type.
 func (s *Action) SetType(val ActionType) {
 	s.Type = val
@@ -875,14 +881,20 @@ func (s *Action) SetSimplePreview(val ActionSimplePreview) {
 	s.SimplePreview = val
 }
 
+// SetBaseTransactions sets the value of BaseTransactions.
+func (s *Action) SetBaseTransactions(val []string) {
+	s.BaseTransactions = val
+}
+
 // Ref: #/components/schemas/ActionPhase
 type ActionPhase struct {
-	Success        bool  `json:"success"`
-	ResultCode     int32 `json:"result_code"`
-	TotalActions   int32 `json:"total_actions"`
-	SkippedActions int32 `json:"skipped_actions"`
-	FwdFees        int64 `json:"fwd_fees"`
-	TotalFees      int64 `json:"total_fees"`
+	Success               bool      `json:"success"`
+	ResultCode            int32     `json:"result_code"`
+	TotalActions          int32     `json:"total_actions"`
+	SkippedActions        int32     `json:"skipped_actions"`
+	FwdFees               int64     `json:"fwd_fees"`
+	TotalFees             int64     `json:"total_fees"`
+	ResultCodeDescription OptString `json:"result_code_description"`
 }
 
 // GetSuccess returns the value of Success.
@@ -915,6 +927,11 @@ func (s *ActionPhase) GetTotalFees() int64 {
 	return s.TotalFees
 }
 
+// GetResultCodeDescription returns the value of ResultCodeDescription.
+func (s *ActionPhase) GetResultCodeDescription() OptString {
+	return s.ResultCodeDescription
+}
+
 // SetSuccess sets the value of Success.
 func (s *ActionPhase) SetSuccess(val bool) {
 	s.Success = val
@@ -943,6 +960,11 @@ func (s *ActionPhase) SetFwdFees(val int64) {
 // SetTotalFees sets the value of TotalFees.
 func (s *ActionPhase) SetTotalFees(val int64) {
 	s.TotalFees = val
+}
+
+// SetResultCodeDescription sets the value of ResultCodeDescription.
+func (s *ActionPhase) SetResultCodeDescription(val OptString) {
+	s.ResultCodeDescription = val
 }
 
 // Shortly describes what this action is about.
@@ -2321,7 +2343,8 @@ func (s *BlockchainBlockShards) SetShards(val []BlockchainBlockShardsShardsItem)
 }
 
 type BlockchainBlockShardsShardsItem struct {
-	LastKnownBlockID string `json:"last_known_block_id"`
+	LastKnownBlockID string          `json:"last_known_block_id"`
+	LastKnownBlock   BlockchainBlock `json:"last_known_block"`
 }
 
 // GetLastKnownBlockID returns the value of LastKnownBlockID.
@@ -2329,9 +2352,19 @@ func (s *BlockchainBlockShardsShardsItem) GetLastKnownBlockID() string {
 	return s.LastKnownBlockID
 }
 
+// GetLastKnownBlock returns the value of LastKnownBlock.
+func (s *BlockchainBlockShardsShardsItem) GetLastKnownBlock() BlockchainBlock {
+	return s.LastKnownBlock
+}
+
 // SetLastKnownBlockID sets the value of LastKnownBlockID.
 func (s *BlockchainBlockShardsShardsItem) SetLastKnownBlockID(val string) {
 	s.LastKnownBlockID = val
+}
+
+// SetLastKnownBlock sets the value of LastKnownBlock.
+func (s *BlockchainBlockShardsShardsItem) SetLastKnownBlock(val BlockchainBlock) {
+	s.LastKnownBlock = val
 }
 
 // Ref: #/components/schemas/BlockchainBlocks
@@ -5462,6 +5495,48 @@ func (s *GetAllRawShardsInfoOK) SetData(val string) {
 	s.Data = val
 }
 
+// Used to sort the result-set in ascending or descending order by lt.
+type GetBlockchainAccountTransactionsSortOrder string
+
+const (
+	GetBlockchainAccountTransactionsSortOrderDesc GetBlockchainAccountTransactionsSortOrder = "desc"
+	GetBlockchainAccountTransactionsSortOrderAsc  GetBlockchainAccountTransactionsSortOrder = "asc"
+)
+
+// AllValues returns all GetBlockchainAccountTransactionsSortOrder values.
+func (GetBlockchainAccountTransactionsSortOrder) AllValues() []GetBlockchainAccountTransactionsSortOrder {
+	return []GetBlockchainAccountTransactionsSortOrder{
+		GetBlockchainAccountTransactionsSortOrderDesc,
+		GetBlockchainAccountTransactionsSortOrderAsc,
+	}
+}
+
+// MarshalText implements encoding.TextMarshaler.
+func (s GetBlockchainAccountTransactionsSortOrder) MarshalText() ([]byte, error) {
+	switch s {
+	case GetBlockchainAccountTransactionsSortOrderDesc:
+		return []byte(s), nil
+	case GetBlockchainAccountTransactionsSortOrderAsc:
+		return []byte(s), nil
+	default:
+		return nil, errors.Errorf("invalid value: %q", s)
+	}
+}
+
+// UnmarshalText implements encoding.TextUnmarshaler.
+func (s *GetBlockchainAccountTransactionsSortOrder) UnmarshalText(data []byte) error {
+	switch GetBlockchainAccountTransactionsSortOrder(data) {
+	case GetBlockchainAccountTransactionsSortOrderDesc:
+		*s = GetBlockchainAccountTransactionsSortOrderDesc
+		return nil
+	case GetBlockchainAccountTransactionsSortOrderAsc:
+		*s = GetBlockchainAccountTransactionsSortOrderAsc
+		return nil
+	default:
+		return errors.Errorf("invalid value: %q", data)
+	}
+}
+
 type GetChartRatesOK struct {
 	Points jx.Raw `json:"points"`
 }
@@ -5602,6 +5677,56 @@ func (s *GetNftItemsByAddressesReq) GetAccountIds() []string {
 // SetAccountIds sets the value of AccountIds.
 func (s *GetNftItemsByAddressesReq) SetAccountIds(val []string) {
 	s.AccountIds = val
+}
+
+type GetOutMsgQueueSizesOK struct {
+	ExtMsgQueueSizeLimit uint32                            `json:"ext_msg_queue_size_limit"`
+	Shards               []GetOutMsgQueueSizesOKShardsItem `json:"shards"`
+}
+
+// GetExtMsgQueueSizeLimit returns the value of ExtMsgQueueSizeLimit.
+func (s *GetOutMsgQueueSizesOK) GetExtMsgQueueSizeLimit() uint32 {
+	return s.ExtMsgQueueSizeLimit
+}
+
+// GetShards returns the value of Shards.
+func (s *GetOutMsgQueueSizesOK) GetShards() []GetOutMsgQueueSizesOKShardsItem {
+	return s.Shards
+}
+
+// SetExtMsgQueueSizeLimit sets the value of ExtMsgQueueSizeLimit.
+func (s *GetOutMsgQueueSizesOK) SetExtMsgQueueSizeLimit(val uint32) {
+	s.ExtMsgQueueSizeLimit = val
+}
+
+// SetShards sets the value of Shards.
+func (s *GetOutMsgQueueSizesOK) SetShards(val []GetOutMsgQueueSizesOKShardsItem) {
+	s.Shards = val
+}
+
+type GetOutMsgQueueSizesOKShardsItem struct {
+	ID   BlockRaw `json:"id"`
+	Size uint32   `json:"size"`
+}
+
+// GetID returns the value of ID.
+func (s *GetOutMsgQueueSizesOKShardsItem) GetID() BlockRaw {
+	return s.ID
+}
+
+// GetSize returns the value of Size.
+func (s *GetOutMsgQueueSizesOKShardsItem) GetSize() uint32 {
+	return s.Size
+}
+
+// SetID sets the value of ID.
+func (s *GetOutMsgQueueSizesOKShardsItem) SetID(val BlockRaw) {
+	s.ID = val
+}
+
+// SetSize sets the value of Size.
+func (s *GetOutMsgQueueSizesOKShardsItem) SetSize(val uint32) {
+	s.Size = val
 }
 
 type GetRatesOK struct {
@@ -7276,6 +7401,7 @@ func (s *JettonBurnAction) SetJetton(val JettonPreview) {
 // Ref: #/components/schemas/JettonHolders
 type JettonHolders struct {
 	Addresses []JettonHoldersAddressesItem `json:"addresses"`
+	Total     int64                        `json:"total"`
 }
 
 // GetAddresses returns the value of Addresses.
@@ -7283,9 +7409,19 @@ func (s *JettonHolders) GetAddresses() []JettonHoldersAddressesItem {
 	return s.Addresses
 }
 
+// GetTotal returns the value of Total.
+func (s *JettonHolders) GetTotal() int64 {
+	return s.Total
+}
+
 // SetAddresses sets the value of Addresses.
 func (s *JettonHolders) SetAddresses(val []JettonHoldersAddressesItem) {
 	s.Addresses = val
+}
+
+// SetTotal sets the value of Total.
+func (s *JettonHolders) SetTotal(val int64) {
+	s.Total = val
 }
 
 type JettonHoldersAddressesItem struct {
@@ -7328,6 +7464,7 @@ func (s *JettonHoldersAddressesItem) SetBalance(val string) {
 type JettonInfo struct {
 	Mintable     bool                   `json:"mintable"`
 	TotalSupply  string                 `json:"total_supply"`
+	Admin        OptAccountAddress      `json:"admin"`
 	Metadata     JettonMetadata         `json:"metadata"`
 	Verification JettonVerificationType `json:"verification"`
 	HoldersCount int32                  `json:"holders_count"`
@@ -7341,6 +7478,11 @@ func (s *JettonInfo) GetMintable() bool {
 // GetTotalSupply returns the value of TotalSupply.
 func (s *JettonInfo) GetTotalSupply() string {
 	return s.TotalSupply
+}
+
+// GetAdmin returns the value of Admin.
+func (s *JettonInfo) GetAdmin() OptAccountAddress {
+	return s.Admin
 }
 
 // GetMetadata returns the value of Metadata.
@@ -7366,6 +7508,11 @@ func (s *JettonInfo) SetMintable(val bool) {
 // SetTotalSupply sets the value of TotalSupply.
 func (s *JettonInfo) SetTotalSupply(val string) {
 	s.TotalSupply = val
+}
+
+// SetAdmin sets the value of Admin.
+func (s *JettonInfo) SetAdmin(val OptAccountAddress) {
+	s.Admin = val
 }
 
 // SetMetadata sets the value of Metadata.
@@ -8693,16 +8840,17 @@ func (s *NftCollections) SetNftCollections(val []NftCollection) {
 
 // Ref: #/components/schemas/NftItem
 type NftItem struct {
-	Address    string               `json:"address"`
-	Index      int64                `json:"index"`
-	Owner      OptAccountAddress    `json:"owner"`
-	Collection OptNftItemCollection `json:"collection"`
-	Verified   bool                 `json:"verified"`
-	Metadata   NftItemMetadata      `json:"metadata"`
-	Sale       OptSale              `json:"sale"`
-	Previews   []ImagePreview       `json:"previews"`
-	DNS        OptString            `json:"dns"`
-	ApprovedBy NftApprovedBy        `json:"approved_by"`
+	Address     string               `json:"address"`
+	Index       int64                `json:"index"`
+	Owner       OptAccountAddress    `json:"owner"`
+	Collection  OptNftItemCollection `json:"collection"`
+	Verified    bool                 `json:"verified"`
+	Metadata    NftItemMetadata      `json:"metadata"`
+	Sale        OptSale              `json:"sale"`
+	Previews    []ImagePreview       `json:"previews"`
+	DNS         OptString            `json:"dns"`
+	ApprovedBy  NftApprovedBy        `json:"approved_by"`
+	IncludeCnft OptBool              `json:"include_cnft"`
 }
 
 // GetAddress returns the value of Address.
@@ -8755,6 +8903,11 @@ func (s *NftItem) GetApprovedBy() NftApprovedBy {
 	return s.ApprovedBy
 }
 
+// GetIncludeCnft returns the value of IncludeCnft.
+func (s *NftItem) GetIncludeCnft() OptBool {
+	return s.IncludeCnft
+}
+
 // SetAddress sets the value of Address.
 func (s *NftItem) SetAddress(val string) {
 	s.Address = val
@@ -8803,6 +8956,11 @@ func (s *NftItem) SetDNS(val OptString) {
 // SetApprovedBy sets the value of ApprovedBy.
 func (s *NftItem) SetApprovedBy(val NftApprovedBy) {
 	s.ApprovedBy = val
+}
+
+// SetIncludeCnft sets the value of IncludeCnft.
+func (s *NftItem) SetIncludeCnft(val OptBool) {
+	s.IncludeCnft = val
 }
 
 type NftItemCollection struct {
@@ -11495,6 +11653,52 @@ func (o OptGetAccountsReq) Get() (v GetAccountsReq, ok bool) {
 
 // Or returns value if set, or given parameter if does not.
 func (o OptGetAccountsReq) Or(d GetAccountsReq) GetAccountsReq {
+	if v, ok := o.Get(); ok {
+		return v
+	}
+	return d
+}
+
+// NewOptGetBlockchainAccountTransactionsSortOrder returns new OptGetBlockchainAccountTransactionsSortOrder with value set to v.
+func NewOptGetBlockchainAccountTransactionsSortOrder(v GetBlockchainAccountTransactionsSortOrder) OptGetBlockchainAccountTransactionsSortOrder {
+	return OptGetBlockchainAccountTransactionsSortOrder{
+		Value: v,
+		Set:   true,
+	}
+}
+
+// OptGetBlockchainAccountTransactionsSortOrder is optional GetBlockchainAccountTransactionsSortOrder.
+type OptGetBlockchainAccountTransactionsSortOrder struct {
+	Value GetBlockchainAccountTransactionsSortOrder
+	Set   bool
+}
+
+// IsSet returns true if OptGetBlockchainAccountTransactionsSortOrder was set.
+func (o OptGetBlockchainAccountTransactionsSortOrder) IsSet() bool { return o.Set }
+
+// Reset unsets value.
+func (o *OptGetBlockchainAccountTransactionsSortOrder) Reset() {
+	var v GetBlockchainAccountTransactionsSortOrder
+	o.Value = v
+	o.Set = false
+}
+
+// SetTo sets value to v.
+func (o *OptGetBlockchainAccountTransactionsSortOrder) SetTo(v GetBlockchainAccountTransactionsSortOrder) {
+	o.Set = true
+	o.Value = v
+}
+
+// Get returns value and boolean that denotes whether value was set.
+func (o OptGetBlockchainAccountTransactionsSortOrder) Get() (v GetBlockchainAccountTransactionsSortOrder, ok bool) {
+	if !o.Set {
+		return v, false
+	}
+	return o.Value, true
+}
+
+// Or returns value if set, or given parameter if does not.
+func (o OptGetBlockchainAccountTransactionsSortOrder) Or(d GetBlockchainAccountTransactionsSortOrder) GetBlockchainAccountTransactionsSortOrder {
 	if v, ok := o.Get(); ok {
 		return v
 	}
@@ -14762,6 +14966,7 @@ type Transaction struct {
 	OrigStatus      AccountStatus      `json:"orig_status"`
 	EndStatus       AccountStatus      `json:"end_status"`
 	TotalFees       int64              `json:"total_fees"`
+	EndBalance      int64              `json:"end_balance"`
 	TransactionType TransactionType    `json:"transaction_type"`
 	StateUpdateOld  string             `json:"state_update_old"`
 	StateUpdateNew  string             `json:"state_update_new"`
@@ -14817,6 +15022,11 @@ func (s *Transaction) GetEndStatus() AccountStatus {
 // GetTotalFees returns the value of TotalFees.
 func (s *Transaction) GetTotalFees() int64 {
 	return s.TotalFees
+}
+
+// GetEndBalance returns the value of EndBalance.
+func (s *Transaction) GetEndBalance() int64 {
+	return s.EndBalance
 }
 
 // GetTransactionType returns the value of TransactionType.
@@ -14932,6 +15142,11 @@ func (s *Transaction) SetEndStatus(val AccountStatus) {
 // SetTotalFees sets the value of TotalFees.
 func (s *Transaction) SetTotalFees(val int64) {
 	s.TotalFees = val
+}
+
+// SetEndBalance sets the value of EndBalance.
+func (s *Transaction) SetEndBalance(val int64) {
+	s.EndBalance = val
 }
 
 // SetTransactionType sets the value of TransactionType.
@@ -15558,16 +15773,22 @@ func (s *ValueFlowJettonsItem) SetQuantity(val int64) {
 
 // Ref: #/components/schemas/WalletDNS
 type WalletDNS struct {
-	Address         string   `json:"address"`
-	IsWallet        bool     `json:"is_wallet"`
-	HasMethodPubkey bool     `json:"has_method_pubkey"`
-	HasMethodSeqno  bool     `json:"has_method_seqno"`
-	Names           []string `json:"names"`
+	Address         string         `json:"address"`
+	Account         AccountAddress `json:"account"`
+	IsWallet        bool           `json:"is_wallet"`
+	HasMethodPubkey bool           `json:"has_method_pubkey"`
+	HasMethodSeqno  bool           `json:"has_method_seqno"`
+	Names           []string       `json:"names"`
 }
 
 // GetAddress returns the value of Address.
 func (s *WalletDNS) GetAddress() string {
 	return s.Address
+}
+
+// GetAccount returns the value of Account.
+func (s *WalletDNS) GetAccount() AccountAddress {
+	return s.Account
 }
 
 // GetIsWallet returns the value of IsWallet.
@@ -15593,6 +15814,11 @@ func (s *WalletDNS) GetNames() []string {
 // SetAddress sets the value of Address.
 func (s *WalletDNS) SetAddress(val string) {
 	s.Address = val
+}
+
+// SetAccount sets the value of Account.
+func (s *WalletDNS) SetAccount(val AccountAddress) {
+	s.Account = val
 }
 
 // SetIsWallet sets the value of IsWallet.

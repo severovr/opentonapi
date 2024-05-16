@@ -16,6 +16,7 @@ import (
 	"github.com/tonkeeper/opentonapi/pkg/blockchain"
 	"github.com/tonkeeper/tongo"
 	"github.com/tonkeeper/tongo/tlb"
+	"github.com/tonkeeper/tongo/ton"
 	"github.com/tonkeeper/tongo/tontest"
 	"github.com/tonkeeper/tongo/txemulator"
 	"golang.org/x/exp/slices"
@@ -159,7 +160,7 @@ func (h *Handler) GetTrace(ctx context.Context, params oas.GetTraceParams) (*oas
 	if err != nil {
 		return nil, toError(http.StatusInternalServerError, err)
 	}
-	convertedTrace := convertTrace(*trace, h.addressBook)
+	convertedTrace := convertTrace(trace, h.addressBook)
 	if emulated {
 		convertedTrace.Emulated.SetTo(true)
 	}
@@ -195,6 +196,15 @@ func (h *Handler) GetEvent(ctx context.Context, params oas.GetEventParams) (*oas
 	return &event, nil
 }
 
+func contains[T comparable](sl []T, s T) bool {
+	for i := range sl {
+		if sl[i] == s {
+			return true
+		}
+	}
+	return false
+}
+
 func (h *Handler) GetAccountEvents(ctx context.Context, params oas.GetAccountEventsParams) (*oas.AccountEvents, error) {
 	account, err := tongo.ParseAddress(params.AccountID)
 	if err != nil {
@@ -208,6 +218,7 @@ func (h *Handler) GetAccountEvents(ctx context.Context, params oas.GetAccountEve
 	events := make([]oas.AccountEvent, 0, len(traceIDs))
 
 	var lastLT uint64
+	var skippedInProgress []ton.Bits256
 	for _, traceID := range traceIDs {
 		lastLT = traceID.Lt
 		trace, err := h.storage.GetTrace(ctx, traceID.Hash)
@@ -219,6 +230,7 @@ func (h *Handler) GetAccountEvents(ctx context.Context, params oas.GetAccountEve
 			return nil, toError(http.StatusInternalServerError, err)
 		}
 		if trace.InProgress() {
+			skippedInProgress = append(skippedInProgress, traceID.Hash)
 			continue
 		}
 		result, err := bath.FindActions(ctx, trace, bath.ForAccount(account.ID), bath.WithInformationSource(h.storage))
@@ -235,9 +247,9 @@ func (h *Handler) GetAccountEvents(ctx context.Context, params oas.GetAccountEve
 		memTraces, _ := h.mempoolEmulate.accountsTraces.Get(account.ID)
 		i := 0
 		for _, hash := range memTraces {
-			_, err = h.storage.SearchTransactionByMessageHash(ctx, hash)
+			tx, _ := h.storage.SearchTransactionByMessageHash(ctx, hash)
 			trace, prs := h.mempoolEmulate.traces.Get(hash)
-			if err == nil || !prs { //if err is nil it's already processed. If !prs we can't do anything
+			if (tx != nil && !contains(skippedInProgress, *tx)) || !prs { //if err is nil it's already processed. If !prs we can't do anything
 				h.mempoolEmulate.traces.Delete(hash)
 				continue
 			}
@@ -259,6 +271,14 @@ func (h *Handler) GetAccountEvents(ctx context.Context, params oas.GetAccountEve
 			if len(events) > params.Limit {
 				events = events[:params.Limit]
 			}
+			lastLT = uint64(events[len(events)-1].Lt)
+		}
+	}
+	if len(events) < params.Limit {
+		missedLimit := params.Limit - len(events)
+		missedEvents, _ := h.storage.GetMissedEvents(ctx, account.ID, lastLT, missedLimit)
+		events = append(events, missedEvents...)
+		if len(events) > 0 {
 			lastLT = uint64(events[len(events)-1].Lt)
 		}
 	}
@@ -334,6 +354,7 @@ func (h *Handler) EmulateMessageToAccountEvent(ctx context.Context, request *oas
 	options := []txemulator.TraceOption{
 		txemulator.WithAccountsSource(h.storage),
 		txemulator.WithConfigBase64(configBase64),
+		txemulator.WithLimit(1100),
 	}
 	if !params.IgnoreSignatureCheck.Value {
 		options = append(options, txemulator.WithSignatureCheck())
@@ -453,11 +474,11 @@ func (h *Handler) EmulateMessageToTrace(ctx context.Context, request *oas.Emulat
 			return nil, toError(http.StatusInternalServerError, err)
 		}
 	}
-	t := convertTrace(*trace, h.addressBook)
+	t := convertTrace(trace, h.addressBook)
 	return &t, nil
 }
 
-func extractDestinationWallet(message tlb.Message) (*tongo.AccountID, error) {
+func extractDestinationWallet(message tlb.Message) (*ton.AccountID, error) {
 	if message.Info.SumType != "ExtInMsgInfo" {
 		return nil, fmt.Errorf("unsupported message type: %v", message.Info.SumType)
 	}
@@ -545,6 +566,7 @@ func (h *Handler) EmulateMessageToWallet(ctx context.Context, request *oas.Emula
 	options := []txemulator.TraceOption{
 		txemulator.WithConfigBase64(configBase64),
 		txemulator.WithAccountsSource(h.storage),
+		txemulator.WithLimit(1100),
 	}
 	accounts, err := convertEmulationParameters(request.Params)
 	if err != nil {
@@ -575,7 +597,7 @@ func (h *Handler) EmulateMessageToWallet(ctx context.Context, request *oas.Emula
 	if err != nil {
 		return nil, toError(http.StatusInternalServerError, err)
 	}
-	t := convertTrace(*trace, h.addressBook)
+	t := convertTrace(trace, h.addressBook)
 	result, err := bath.FindActions(ctx, trace, bath.ForAccount(*walletAddress), bath.WithInformationSource(h.storage))
 	if err != nil {
 		return nil, toError(http.StatusInternalServerError, err)
